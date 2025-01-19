@@ -24,8 +24,12 @@ impl Handler for HandlerSSH {
     }
 
     async fn auth_publickey_offered(&mut self, user: &str, public_key: &ssh_key::PublicKey) -> Result<Auth, Self::Error> {
-        let _ = String::from_utf8_lossy(public_key.to_bytes().unwrap().as_slice());
-        Ok(Auth::Accept)
+        if user != "asvatthi" {
+            Ok(Auth::Reject { proceed_with_methods: None })
+        } else {
+            let _ = String::from_utf8_lossy(public_key.to_bytes().unwrap().as_slice());
+            Ok(Auth::Accept)    
+        }
     }
 
     async fn channel_open_session(&mut self, channel: Channel<Msg>, session: &mut Session) -> Result<bool, Self::Error> {
