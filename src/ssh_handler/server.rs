@@ -1,10 +1,9 @@
 use crate::russh::server::Server;
-use super::handler::HandlerSSH;
-
-pub struct ServerSSH {}
+use super::structs::HandlerSSH;
+use super::structs::ServerSSH;
 
 impl Server for ServerSSH {
-    type Handler = super::handler::HandlerSSH;
+    type Handler = HandlerSSH;
 
     fn new_client(&mut self, _address: Option<std::net::SocketAddr>) -> Self::Handler {
         HandlerSSH::new()
