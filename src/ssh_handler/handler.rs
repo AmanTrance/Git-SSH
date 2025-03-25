@@ -1,8 +1,6 @@
 use std::process::Stdio;
-use crate::russh::server::Handler;
-use async_trait::async_trait;
-use russh::{server::{Auth, Msg, Session}, Channel, ChannelId, CryptoVec, Disconnect, MethodSet};
-use russh_keys::ssh_key;
+use russh::server::Handler;
+use russh::{server::{Auth, Msg, Session}, Channel, ChannelId, CryptoVec, Disconnect};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use super::structs::HandlerSSH;
 
@@ -12,22 +10,21 @@ impl HandlerSSH {
     }
 }
 
-#[async_trait]
 impl Handler for HandlerSSH {
     type Error = russh::Error;
 
     async fn auth_none(&mut self, _user: &str) -> Result<Auth, Self::Error> {
-        Ok(Auth::Reject { proceed_with_methods: Some (MethodSet::PUBLICKEY) })
+        let mut auth_methods: russh::MethodSet = russh::MethodSet::empty();
+        auth_methods.push(russh::MethodKind::PublicKey);
+        Ok(Auth::Reject { proceed_with_methods: Some (auth_methods), partial_success: false })
     }
 
-    async fn auth_publickey_offered(&mut self, _user: &str, public_key: &ssh_key::PublicKey) -> Result<Auth, Self::Error> {
-        // let key_slice: Vec<u8> = public_key.to_bytes().unwrap();
-        // let key: std::borrow::Cow<'_, str> = String::from_utf8_lossy(key_slice.as_slice()).to_owned();
-        self.mode = Some ( super::structs::Mode::ReceivePack (String::from("/home/amanfreecs/hello.git")) );
+    async fn auth_publickey_offered(&mut self, _user: &str, _public_key: &russh::keys::PublicKey) -> Result<Auth, Self::Error> {
+        self.mode = Some ( super::structs::Mode::UploadPack (String::from("/home/amanfreecs/hello.git")) );
         Ok(Auth::Accept)
     }
 
-    async fn auth_publickey(&mut self, _user: &str, _public_key: &ssh_key::PublicKey) -> Result<Auth, Self::Error> {
+    async fn auth_publickey(&mut self, _user: &str, _public_key: &russh::keys::PublicKey) -> Result<Auth, Self::Error> {
         Ok(Auth::Accept)
     }
 
@@ -134,15 +131,16 @@ impl Handler for HandlerSSH {
         session.exit_status_request(channel, 0)?;
         session.eof(channel)?;
         
-        let mut child_process = self.child.take().unwrap();
-        
         if !self.fd_in.is_none() {
             drop(self.fd_in.take().unwrap());
         }
-        
-        tokio::spawn(async move {
-            child_process.wait().await.unwrap();
-        });    
+
+        if !self.child.is_none() {
+            let mut child_process = self.child.take().unwrap();
+            tokio::spawn(async move {
+                child_process.wait().await.unwrap();
+            });
+        }    
         
         session.close(channel)
     }

@@ -1,4 +1,4 @@
-use crate::russh::server::Server;
+use russh::server::Server;
 use super::structs::HandlerSSH;
 use super::structs::ServerSSH;
 
