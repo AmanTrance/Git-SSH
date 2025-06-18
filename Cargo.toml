@@ -1,9 +1,11 @@
 [package]
 name = "ssh-git"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.44.1", features = ["full"] }
-russh = { version = "0.51.1" }
-uuid = { version = "1.16.0", features = ["v4"] }
+tokio = { version = "1.45.1", features = ["full"] }
+russh = { version = "0.52.1" }
+uuid = { version = "1.17.0", features = ["v4"] }
+chrono = "0.4.41"
+regex = "1.11.1"
