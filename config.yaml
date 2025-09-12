@@ -1,0 +1,10 @@
+inactivity_timeout: 3600
+auth_rejection_time: 3
+auth_rejection_time_initial: 0
+keepalive_interval: 30
+keepalive_max: 3
+keys_path:
+  - "/home/username1/.ssh/test_russh"
+  - "/home/username2/.ssh/file2"
+  - "/home/username2/.ssh/file3"
+  - "/home/username2/.ssh/file4"
