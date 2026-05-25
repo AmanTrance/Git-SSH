@@ -78,11 +78,9 @@ impl Handler for HandlerSSH {
                                     match result {
                                         Ok(bytes) => {
                                             if bytes == 0 {
-                                                session.data(
-                                                    channel,
-                                                    CryptoVec::from(self.buffer.as_ref().unwrap() as &[u8]),
-                                                )?;
                                                 break 'outer ()
+                                            } else {
+                                                println!("{bytes}");
                                             }
                                         }
 
@@ -90,14 +88,23 @@ impl Handler for HandlerSSH {
                                     }
                                 },
 
-                            _ = tokio::time::sleep(tokio::time::Duration::from_secs(2)) => break 'outer ()
+                            _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => break 'outer ()
                         };
                     };
+
+                    if self.buffer.as_mut().unwrap().len() > 0 {
+                        session.data(
+                            channel,
+                            CryptoVec::from(self.buffer.as_ref().unwrap() as &[u8]),
+                        )?;
+                        self.buffer.as_mut().unwrap().clear();
+                    }
 
                     Ok(())
                 }
 
                 super::structs::Mode::UploadPack(path) => {
+                    println!("uploading");
                     let mut child: tokio::process::Child =
                         tokio::process::Command::new("git-upload-pack")
                             .args(["--stateless-rpc", path])
@@ -132,7 +139,7 @@ impl Handler for HandlerSSH {
             )
         } else {
             let matcher: regex::Regex =
-                regex::Regex::new("^(git-receive-pack)|^(git-upload-pack)").unwrap();
+                regex::Regex::new("^(git-receive-pack|git-upload-pack)").unwrap();
             if matcher.is_match(&cmd) {
                 if cmd[..=15].eq("git-receive-pack") {
                     self.mode = Some(crate::core::structs::Mode::ReceivePack);
@@ -150,15 +157,34 @@ impl Handler for HandlerSSH {
 
                     self.fd_in.as_mut().unwrap().flush().await?;
 
-                    self.fd_out
-                        .as_mut()
-                        .unwrap()
-                        .read_buf(self.buffer.as_mut().unwrap())
-                        .await?;
-                    session.data(
-                        channel,
-                        CryptoVec::from(self.buffer.as_ref().unwrap() as &[u8]),
-                    )?;
+                    let () = 'outer: loop {
+                        tokio::select! {
+                            result = self
+                                .fd_out
+                                .as_mut()
+                                .unwrap()
+                                .read_buf(self.buffer.as_mut().unwrap()) => {
+                                    match result {
+                                        Ok(bytes) => {
+                                            if bytes == 0 {
+                                                break 'outer
+                                            }
+                                        }
+
+                                        Err(_) => break 'outer ()
+                                    }
+                                }
+
+                            _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => break 'outer
+                        }
+
+                        session.data(
+                            channel,
+                            CryptoVec::from(self.buffer.as_ref().unwrap() as &[u8]),
+                        )?;
+                        self.buffer.as_mut().unwrap().clear();
+                    };
+
                     self.buffer.as_mut().unwrap().clear();
                     Ok(())
                 } else {
