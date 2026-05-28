@@ -79,8 +79,6 @@ impl Handler for HandlerSSH {
                                         Ok(bytes) => {
                                             if bytes == 0 {
                                                 break 'outer ()
-                                            } else {
-                                                println!("{bytes}");
                                             }
                                         }
 
@@ -185,7 +183,6 @@ impl Handler for HandlerSSH {
                         self.buffer.as_mut().unwrap().clear();
                     };
 
-                    self.buffer.as_mut().unwrap().clear();
                     Ok(())
                 } else {
                     self.mode = Some(super::structs::Mode::UploadPack(format!(
